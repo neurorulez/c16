@@ -183,7 +183,7 @@ ted mos8360(
 	);
 	
 // Kernal rom
-
+`ifndef CYCLONE
 	kernal_rom #(.MODE_PAL(MODE_PAL)) kernal(
 		.clk(CLK28),
 		.address_in(kernal_dl_write?dl_addr:c16_addr[13:0]),
@@ -207,6 +207,26 @@ assign kernal_data = INTERNAL_ROM ? kernal_data_int : (~CS1 & RW) ? DIN : 8'hFF;
 		);
 wire [7:0] basic_data_int;
 assign basic_data = INTERNAL_ROM ? basic_data_int : (~CS0 & RW) ? DIN : 8'hFF;
+`else
+wire [7:0] kernal_pal_data_out;
+wire [7:0] basic_data_out;
+assign kernal_data = ~CS1 ? kernal_pal_data_out	: 8'hFF;
+assign basic_data = ~CS0 ? basic_data_out	: 8'hFF;
+
+basic basic
+(
+		.clk(CLK28),
+		.addr(c16_addr[13:0]),
+		.data(basic_data_out)
+);
+
+kernal kernal
+(
+	 	.clk(CLK28),
+		.addr(c16_addr[13:0]),
+		.data(kernal_pal_data_out)
+);
+`endif	
 // Color decoder to 12bit RGB	
  
 colors_to_rgb colordecode (

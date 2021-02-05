@@ -20,6 +20,7 @@
 //
 
 module c16_mist (
+`ifndef CYCLONE
    input  	 CLOCK_27,
 
 	// LED outputs
@@ -58,7 +59,86 @@ module c16_mist (
 
    input     UART_RX,
    output    UART_TX
+`else
+   // Clocks
+	input wire	CLOCK_50,
+	
+	output wire LED,
+	
+	// SRAMs (AS7C34096)
+	output wire	[20:0]sram_addr,
+	inout wire	[7:0]sram_data,
+	output wire	sram_we_n,
+	output wire	sram_oe_n, //Neptuno
+	output wire	sram_lb_n, //Neptuno
+	output wire	sram_ub_n, //Neptuno
+	
+	// SDRAM	(H57V256)
+	output wire	[12:0] SDRAM_A, 
+	inout wire	[15:0] SDRAM_DQ, 
+	output wire	[1:0] SDRAM_BA, 
+	output wire	SDRAM_DQML, 
+	output wire	SDRAM_DQMH, 
+	output wire	SDRAM_nRAS,
+	output wire	SDRAM_nCAS, 
+	output wire	SDRAM_CKE, 
+	output wire	SDRAM_CLK, 
+	output wire	SDRAM_nCS,
+	output wire	SDRAM_nWE,
+
+	// PS2
+	inout wire	ps2_kbd_clk,
+	inout wire	ps2_kbd_data,
+	inout wire	ps2_mouse_clk,
+	inout wire	ps2_mouse_data,
+
+	// SD Card
+	output wire	sd_cs_n,
+	output wire	sd_sclk,
+	output wire	sd_mosi,
+	input wire	sd_miso,
+
+	// Joysticks
+`ifndef JOYDC
+	output wire	JOY_CLK,
+	output wire	JOY_LOAD,
+	input  wire JOY_DATA,
+	output wire JOY_SELEC,
+`else
+	input	wire [5:0]joystick1,
+	input	wire [5:0]joystick2,
+`endif	
+	// Audio
+	output wire	AUDIO_L,
+	output wire	AUDIO_R,
+	input wire	UART_RX, //EAR_IN
+	output wire	UART_TX, //MOTOR_OUT
+
+	output wire	MCLK,
+	output wire	SCLK,
+	output wire	LRCLK,
+	output wire	SDIN,
+	
+		// VGA
+	output wire	[5:0]VGA_R, 
+	output wire	[5:0]VGA_G, 
+	output wire	[5:0]VGA_B, 
+	output wire	VGA_HS, 
+	output wire	VGA_VS,
+
+	output wire VGA_BLANK, //Reloaded
+	output wire VGA_CLOCK, //Reloaded
+	
+	output wire STM_RST
+`endif	   
 );
+
+//////////////////////////////////////////////////////////////////////////
+`ifdef CYCLONE
+assign STM_RST = 1'b0; 
+assign VGA_BLANK = 1'b1;
+assign VGA_CLOCK = clk28;
+`endif
 
 // -------------------------------------------------------------------------
 // ------------------------------ user_io ----------------------------------
@@ -100,7 +180,11 @@ assign UART_TX = ~cass_motor;
 
 // the status register is controlled by the on screen display (OSD)
 wire [31:0] status;
+`ifndef CYCLONE
 wire tv15khz;
+`else
+wire tv15khz=!host_scandoubler_disable;
+`endif
 wire ypbpr;
 wire no_csync;
 wire [1:0] scanlines = status[2:1];
@@ -115,10 +199,10 @@ wire [1:0] buttons;
 wire [7:0] js0, js1;
 wire [7:0] jsA = joystick_swap?js1:js0;
 wire [7:0] jsB = joystick_swap?js0:js1;
-
+`ifndef CYCLONE
 wire ps2_kbd_clk, ps2_kbd_data;
 wire ps2_mouse_clk, ps2_mouse_data;
-
+`endif
 // -------------------------------------------------------------------------
 // ---------------- interface to the external sdram ------------------------
 // -------------------------------------------------------------------------
@@ -184,7 +268,9 @@ wire [15:0] sdram_dout;
 wire [7:0] c16_din = zp_overwrite?zp_ovl_dout:
 	(c16_a_low[0]?sdram_dout[15:8]:sdram_dout[7:0]);
 
+`ifndef CYCLONE
 assign SDRAM_CLK = clk28;
+`endif
 
 // synchronize sdram state machine with the ras/cas phases of the c16
 reg last_ras;
@@ -272,6 +358,7 @@ wire sd_din_strobe;
 wire img_mounted;
 wire [8:0] sd_buff_addr;
 
+`ifndef CYCLONE
 // include user_io module for arm controller communication
 user_io #(.STRLEN($size(CONF_STR)>>3)) user_io (
 	.conf_str       ( CONF_STR       ),
@@ -314,7 +401,72 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io (
 
 	.status         ( status         )
 );
+`else
+wire [7:0]R_OSD,G_OSD,B_OSD;
+wire host_divert_keyboard, host_scandoubler_disable;
 
+data_io data_io
+(
+	.clk(clk28),
+	.CLOCK_50(CLOCK_50), //Para modulos de I2s y Joystick
+	
+	.debug(),
+	
+	.reset_n(pll_locked),
+	.vga_hsync(c16_hs),
+	.vga_vsync(~c16_vs),
+	
+	.red_i({c16_r,c16_r}),
+	.green_i({c16_g,c16_g}),
+	.blue_i({c16_b,c16_b}),
+	.red_o(R_OSD),
+	.green_o(G_OSD),
+	.blue_o(B_OSD),
+	
+	.ps2k_clk_in(ps2_kbd_clk),
+	.ps2k_dat_in(ps2_kbd_data),
+	.ps2_key(),
+
+	.host_scandoubler_disable(host_scandoubler_disable),
+	.host_divert_keyboard(host_divert_keyboard),
+	
+`ifndef JOYDC
+	.JOY_CLK(JOY_CLK),
+	.JOY_LOAD(JOY_LOAD),
+	.JOY_DATA(JOY_DATA),
+	.JOY_SELECT(JOY_SELECT),
+	.joy1(joy1),
+	.joy2(joy2),
+`endif
+	.dac_MCLK(MCLK),
+	.dac_LRCK(LRCLK),
+	.dac_SCLK(SCLK),
+	.dac_SDIN(SDIN),
+	.L_data(audio_data_l[17:2]),
+	.R_data(audio_data_r[17:2]),
+	
+	.spi_miso(sd_miso),
+	.spi_mosi(sd_mosi),
+	.spi_clk(sd_sclk),
+	.spi_cs(sd_cs_n),
+
+	.img_mounted(img_mounted),
+	.img_size(),
+	.img_readonly(),
+	
+	.status(status),
+	
+	.ioctl_ce(1'b1),
+	.ioctl_wr(ioctl_wr),
+	.ioctl_addr(ioctl_addr),
+	.ioctl_dout(ioctl_data),
+	.ioctl_download(ioctl_downloading),
+	.ioctl_index(ioctl_index),
+	.ioctl_file_ext()
+);
+
+wire        dsk_download  = ioctl_downloading && (ioctl_index == 8'd2);
+`endif
 // ---------------------------------------------------------------------------------
 // ------------------------------ prg memory injection -----------------------------
 // ---------------------------------------------------------------------------------
@@ -330,7 +482,7 @@ wire prg_download = ioctl_downloading && (ioctl_index == 8'h01);
 wire tap_download = ioctl_downloading && (ioctl_index == 8'h41);
 
 wire c16_wait = rom_download | prg_download;
-
+`ifndef CYCLONE
 data_io data_io (
 	.clk_sys        ( clk28 ),
 	// SPI interface
@@ -345,7 +497,7 @@ data_io data_io (
 	.ioctl_addr     ( ioctl_addr ),
 	.ioctl_dout     ( ioctl_data )
 );
-
+`endif
 // magic zero page shadow registers to allow the injector to set the
 // basic program end pointers automagically after injection
 reg [15:0] reg_2d;
@@ -546,10 +698,15 @@ mist_video #(.COLOR_DEPTH(4), .OSD_COLOR(3'd5), .SD_HCNT_WIDTH(10), .OSD_AUTO_CE
 	.blend       ( 1'b0       ),
 
 	// video in
+`ifndef CYCLONE	
 	.R           ( c16_r      ),
 	.G           ( c16_g      ),
 	.B           ( c16_b      ),
-
+`else
+	.R           ( R_OSD[7:4] ),
+	.G           ( G_OSD[7:4] ),
+	.B           ( B_OSD[7:4] ),
+`endif
 	.HSync       ( c16_hs     ),
 	.VSync       ( ~c16_vs    ),
 
@@ -643,7 +800,7 @@ C16 #(.INTERNAL_ROM(0)) c16 (
 	.JOY1    ( jsA[4:0] ),
 	
 	.PS2DAT  ( ps2_kbd_data ),
-	.PS2CLK  ( ps2_kbd_clk  ),
+	.PS2CLK  ( ps2_kbd_clk & !host_divert_keyboard ),
 
 	.dl_addr         ( rom_dl_addr ),
 	.dl_data         ( rom_dl_data ),
@@ -686,15 +843,25 @@ wire ntsc = ~c16_pal;
 // A PLL to derive the system clock from the MiSTs 27MHz
 wire pll_c1541_locked, clk32;
 pll_c1541 pll_c1541 (
+`ifndef CYCLONE
     .inclk0 ( CLOCK_27          ),
+`else	
+    .inclk0 ( CLOCK_50          ),
+`endif
     .c0     ( clk32             ),
     .locked ( pll_c1541_locked  )
 );
 
 wire pll_c16_locked, clk28;
 pll_c16 pll_c16 (
+`ifndef CYCLONE
     .inclk0(CLOCK_27),
     .c0(clk28),
+`else
+    .inclk0(CLOCK_50),
+    .c0(clk28),
+    .c1(SDRAM_CLK),
+`endif
     .areset(pll_areset),
     .scanclk(pll_scanclk),
     .scandata(pll_scandata),
@@ -810,7 +977,7 @@ end
 // ---------------------------------------------------------------------------------
 
 wire led_disk;
-assign LED = !led_disk && cass_motor;
+assign LED = ~ioctl_downloading; //!led_disk && cass_motor;
 
 wire c16_iec_atn_o;
 wire c16_iec_data_o;
