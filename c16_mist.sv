@@ -465,7 +465,6 @@ data_io data_io
 	.ioctl_file_ext()
 );
 
-wire        dsk_download  = ioctl_downloading && (ioctl_index == 8'd2);
 `endif
 // ---------------------------------------------------------------------------------
 // ------------------------------ prg memory injection -----------------------------
@@ -1026,4 +1025,39 @@ c1541_sd c1541_sd (
    .c1541rom_wr    ( c1541_dl_wr    )
 );
 
+`ifdef CYCLONE
+/// CAMBIOS
+wire dsk_wr;
+wire [19:0] disk_addr_s;
+wire [7:0] disk_data_s;
+wire dsk_download  = ioctl_downloading && (ioctl_index == 8'h02);
+//wire dsk_download  = ioctl_download && (ioctl_index == 8'h02) ? 1'b1 : 1'b0;
+assign sram_addr   = (dsk_download) ? ioctl_addr[19:0] : disk_addr_s; 
+assign sram_data   = (dsk_download) ? ioctl_data	: 8'bzzzzzzzz;
+assign disk_data_s = sram_data;
+assign sram_we_n   = ~(dsk_download & ioctl_wr);
+assign sram_oe_n   = 1'b0;
+assign sram_lb_n   = 1'b0;
+assign sram_ub_n   = 1'b1;
+
+image_controller image_controller1
+(
+    
+		.clk_i			( clk32 ), 
+		.reset_i		   ( ~reset_n ),
+ 	 
+		.sd_lba			( sd_lba ), 
+		.sd_rd			( sd_rd ),
+		.sd_wr			( sd_wr ),
+
+		.sd_ack			( sd_ack ),
+		.sd_buff_addr	( sd_buff_addr ), 
+		.sd_buff_dout	( sd_dout ), 
+		.sd_buff_din	( sd_din ), 
+		.sd_buff_wr		( sd_dout_strobe ),
+		
+		.sram_addr_o  	( disk_addr_s ),
+		.sram_data_i   ( disk_data_s )
+);
+`endif
 endmodule

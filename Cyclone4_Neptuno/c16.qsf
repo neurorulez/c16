@@ -407,6 +407,7 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to VGA_VS
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to LED
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to AUDIO_L
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to AUDIO_R
+set_global_assignment -name SYSTEMVERILOG_FILE ../CtrlModule/modules/image_controller.sv
 set_global_assignment -name SYSTEMVERILOG_FILE "../mist-modules/cofi.sv"
 set_global_assignment -name VERILOG_FILE ../CtrlModule/modules/joydecoder_neptuno.v
 set_global_assignment -name VERILOG_FILE "../mist-modules/scandoubler.v"
