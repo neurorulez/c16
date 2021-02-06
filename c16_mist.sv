@@ -456,7 +456,7 @@ data_io data_io
 	
 	.status(status),
 	
-	.ioctl_ce(1'b1),
+	.ioctl_ce(clkref),//1'b1),//1'b1),
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_data),

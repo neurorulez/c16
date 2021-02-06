@@ -596,7 +596,7 @@ debug <= '1' when ioctl_index = X"04" else '0';
 ioctl_index <= X"00" when host_loadrom = '1' else
                X"01" when extension(23 downto 0)  = x"505247" else --PRG
                X"41" when extension(23 downto 0)  = x"544150" else --TAP
-               X"02" when extension(23 downto 0)  = x"443634" else --DISK   - d64					
+               X"02" when extension(23 downto 0)  = x"443634" else --d64					
 					X"03" when extension(23 downto 0)  = x"524F4D" else --ROM
 				X"FF";
 					
@@ -614,7 +614,7 @@ end process;
 -- State machine to receive and stash boot data in SRAM
 process(clk)
 begin 
- if rising_edge(clk) then --rising_edge(clk) then
+ if falling_edge(clk) then --rising_edge(clk) then
    ioctl_wr <= '0';
    host_bootdata_ack<='0';
   if ioctl_ce = '1' or ioctl_index(3 downto 0) = x"2" then --Para la carga a SRAM no tiene que usar el "ioctl_ce"
