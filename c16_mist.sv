@@ -103,7 +103,7 @@ module c16_mist (
 	output wire	JOY_CLK,
 	output wire	JOY_LOAD,
 	input  wire JOY_DATA,
-	output wire JOY_SELEC,
+	output wire JOY_SELECT,
 `else
 	input	wire [5:0]joystick1,
 	input	wire [5:0]joystick2,
@@ -435,8 +435,8 @@ data_io data_io
 	.JOY_LOAD(JOY_LOAD),
 	.JOY_DATA(JOY_DATA),
 	.JOY_SELECT(JOY_SELECT),
-	.joy1(joy1),
-	.joy2(joy2),
+	.joy1(js0),
+	.joy2(js1),
 `endif
 	.dac_MCLK(MCLK),
 	.dac_LRCK(LRCLK),
