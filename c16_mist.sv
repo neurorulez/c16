@@ -1044,7 +1044,7 @@ image_controller image_controller1
 (
     
 		.clk_i			( clk32 ), 
-		.reset_i		   ( ~reset_n ),
+		.reset_i		   ( reset ),
  	 
 		.sd_lba			( sd_lba ), 
 		.sd_rd			( sd_rd ),
